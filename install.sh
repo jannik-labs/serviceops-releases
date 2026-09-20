@@ -250,6 +250,13 @@ fi
 
 step 'Assembling the application'
 
+# The base image is pulled on its own first, so that the one thing likely to
+# go wrong here says so plainly: the package is still private, or ghcr.io
+# cannot be reached.
+BASE_IMAGE="$(sed -n 's/^FROM //p' "$WORK/bundle/Dockerfile" | head -1)"
+docker pull -q "$BASE_IMAGE" >/dev/null \
+    || die "Could not pull the base image $BASE_IMAGE. It has to be public on ghcr.io, and this machine has to reach it."
+
 # The bundle's own Dockerfile: our files on a public base image, pinned by
 # digest. It copies and nothing else, which is why this takes seconds and
 # needs no toolchain.
