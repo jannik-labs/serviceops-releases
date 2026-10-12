@@ -236,8 +236,8 @@ de backup_file.rows_alone_no Es wurde nichts verändert. Die Hälfte mit den Anh
 en backup_file.rows_alone_no Nothing was changed. Copy the files half beside the rows and run this again.
 de backup_key.label Backup-Schlüssel
 en backup_key.label Backup key
-de backup_key.what Der Schlüssel, den die alte Installation bei ihrer Einrichtung einmal angezeigt hat: 64 Zeichen aus 0-9 und a-f. Er wird nur für diese Wiederherstellung gebraucht und nicht auf diesem Server gespeichert.
-en backup_key.what The key the old installation showed once when it was installed: 64 characters of 0-9 and a-f. It is used for this restore and not kept on this machine.
+de backup_key.what Der Schlüssel, den die alte Installation bei ihrer Einrichtung einmal angezeigt hat: 64 Zeichen aus 0-9 und a-f. Er öffnet diese Sicherung und bleibt danach auf diesem Server, damit Sicherungen im Tool eingespielt werden können.
+en backup_key.what The key the old installation showed once when it was installed: 64 characters of 0-9 and a-f. It opens this backup and is then kept on this machine, so that backups can be put back from the tool.
 de backup_key.recommended ihn aus dem Passwortmanager kopieren und einfügen.
 en backup_key.recommended copy it from your password manager and paste it.
 de backup_key.find in Ihrem Passwortmanager oder auf dem Papier, auf dem Sie ihn damals notiert haben.
@@ -679,10 +679,10 @@ en import.safe Reading it again is safe: what is in already is passed by or brou
 de import.sealed_later Der Umschlag lässt sich auch später öffnen, unter Verwaltung → Datenübernahme.
 en import.sealed_later The envelope can also be opened later, under Administration → Bringing a business over.
 
-de result.backup_title BACKUP-SCHLÜSSEL - einmal angezeigt, nirgends gespeichert
-en result.backup_title BACKUP KEY - shown once, written nowhere
-de result.backup_why Ohne ihn ist jede Sicherung dieser Installation unlesbar. Bewahren Sie ihn dort auf, wo er diesen Server überlebt: in einem Passwortmanager, auf Papier in einem anderen Gebäude. Nicht auf diesem Server.
-en result.backup_why Without it, every backup this installation makes is unreadable. Put it somewhere that survives this machine: a password manager, a piece of paper in a different building. Not on this server.
+de result.backup_title BACKUP-SCHLÜSSEL - einmal angezeigt, bitte zusätzlich aufbewahren
+en result.backup_title BACKUP KEY - shown once, keep a copy of it
+de result.backup_why Ohne ihn ist jede Sicherung dieser Installation unlesbar. Diese Installation hält ihn selbst, damit sie Sicherungen im Tool einspielen kann; geht der Server verloren, ist er mit ihm weg. Bewahren Sie ihn deshalb auch dort auf, wo er diesen Server überlebt: in einem Passwortmanager, auf Papier in einem anderen Gebäude.
+en result.backup_why Without it, every backup this installation makes is unreadable. This installation holds it itself, so that a backup can be put back from the tool; if the server is lost, it is lost with it. So keep it somewhere that survives this machine as well: a password manager, a piece of paper in a different building.
 de result.commands Danach, auf diesem Server:
 en result.commands Then, on this machine:
 de result.doctor was nicht stimmt, wenn etwas nicht stimmt
@@ -693,8 +693,8 @@ de result.update auf eine neuere Version wechseln, mit einem Weg zurück
 en result.update move to a newer version, with a way back
 de result.setup_once Der Link gilt, bis das erste Konto existiert, danach nie wieder.
 en result.setup_once The link works until the first account exists and then never again.
-de result.restored Die Anhänge kamen mit der Hälfte daneben zurück. Neu eingerichtet werden zwei Dinge, weil sie mit dem Geheimnis der alten Installation versiegelt waren: das Mail-Passwort unter Einstellungen und jeder zweite Faktor; wer einen hatte, meldet sich mit einem Wiederherstellungscode an und richtet ihn neu ein. Neue Sicherungen sind für den angegebenen Backup-Schlüssel verschlossen, der weiterhin nirgends auf diesem Server liegt.
-en result.restored The attachments came back from the half beside it. Two things are set up again, because they were sealed with the old installation's secret: the mail password under Settings, and every second factor; somebody who had one signs in with a recovery code and sets it up again. New backups are locked for the backup key you gave, which is still written nowhere on this machine.
+de result.restored Die Anhänge kamen mit der Hälfte daneben zurück. Neu eingerichtet werden zwei Dinge, weil sie mit dem Geheimnis der alten Installation versiegelt waren: das Mail-Passwort unter Einstellungen und jeder zweite Faktor; wer einen hatte, meldet sich mit einem Wiederherstellungscode an und richtet ihn neu ein. Neue Sicherungen sind für den angegebenen Backup-Schlüssel verschlossen; diese Installation hält ihn, damit Sicherungen im Tool eingespielt werden können.
+en result.restored The attachments came back from the half beside it. Two things are set up again, because they were sealed with the old installation's secret: the mail password under Settings, and every second factor; somebody who had one signs in with a recovery code and sets it up again. New backups are locked for the backup key you gave; this installation holds it, so that backups can be put back from the tool.
 de result.done Fertig: ServiceOps @VERSION@ läuft unter @ORIGIN@.
 en result.done Done: ServiceOps @VERSION@ is running at @ORIGIN@.
 de result.next_setup diesen Link einmal öffnen und den ersten Administrator anlegen: @LINK@
@@ -1496,8 +1496,6 @@ if [ "$RESTORE" = yes ]; then
 
     # The public half is worked out from the secret one, so this installation
     # locks its backups for the key the operator already holds. The secret
-    # half is not written here, for the reason it never is: a machine
-    # somebody has broken into must not be able to read its own backups. It
     # reaches the container through the environment, not the command line.
     BACKUP_PUBLIC="$(SERVICEOPS_BACKUP_SECRET="$BACKUP_SECRET" docker run --rm \
         -e SERVICEOPS_BACKUP_SECRET --entrypoint php "$IMAGE" \
@@ -1523,6 +1521,17 @@ else
     BACKUP_PUBLIC="${BACKUP_KEYS% *}"
     BACKUP_SECRET="${BACKUP_KEYS#* }"
 fi
+
+# The secret half stays on this machine too (ADR 166, the owner's decision of
+# 9 October 2026): the tool puts a backup back without anybody typing it.
+# Beside the file store and not in it, so no backup carries the key that
+# opens it, and readable by the application's user alone. Whoever breaks
+# into this server can therefore read its backups; that was accepted.
+mkdir -p "$INSTALL_DIR/data/files/backup-key"
+( umask 077; printf '%s\n' "$BACKUP_SECRET" > "$INSTALL_DIR/data/files/backup-key/secret" )
+chown -R 33:33 "$INSTALL_DIR/data/files/backup-key"
+chmod 700 "$INSTALL_DIR/data/files/backup-key"
+chmod 600 "$INSTALL_DIR/data/files/backup-key/secret"
 
 ORIGIN="https://$DOMAIN"
 
@@ -1554,11 +1563,11 @@ MAIL_FROM=$MAIL_FROM
 SERVICEOPS_LICENCE_SERVER=$LICENCE_SERVER
 SERVICEOPS_LICENCE_KEY=$SERVER_KEY
 
-# The public half of the backup key. The installation can encrypt a backup
-# with this and cannot read one back: that needs the secret half, which is
-# printed once by this script and written nowhere.
+# The public half of the backup key, which every backup is locked with. The
+# secret half is printed once by this script and kept in
+# data/files/backup-key/secret, so that a backup can be put back from the
+# tool (ADR 166).
 SERVICEOPS_BACKUP_KEY=$BACKUP_PUBLIC
-SERVICEOPS_BACKUP_KEEP_DAYS=30
 
 # Where a copy goes, off this machine. Empty means backups stay here, which
 # is no protection at all against this machine being gone. Fill these in and
