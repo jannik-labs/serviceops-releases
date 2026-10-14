@@ -1586,6 +1586,11 @@ step "$(t start.step)"
 cd "$INSTALL_DIR"
 docker compose --profile tools run --rm migrate
 
+# The data console reads as a database role of its own, which is given what it
+# may read once the schema is there (#122). Without it the console answers
+# nothing; everything else runs either way, so this does not stop the install.
+docker compose --profile tools run --rm console serviceops:console:grants >/dev/null 2>&1 || true
+
 # Before anything else starts, because a backup goes back only into an
 # installation that holds nothing, and a worker or a first administrator
 # would already be something.
