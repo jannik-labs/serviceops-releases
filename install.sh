@@ -10,9 +10,11 @@
 # and downloaded from there, as above; it holds no host name and no secret.
 #
 # It asks for your licence server's address and your licence key first, then
-# for a domain, an address for the first administrator and, if you want
-# mail, an SMTP server. Everything else it works out or generates. You are
-# never asked to invent a secret.
+# for a domain - or none, for an address and a certificate of its own. That
+# is all a machine needs to start. Everything else it works out or
+# generates, and you are never asked to invent a secret. The first account,
+# mail and the data from an earlier system are set up in the browser, from
+# the one link it prints at the end.
 #
 # Moving to a new machine, or replacing one that is gone:
 #
@@ -36,15 +38,16 @@
 # recommended and why, a proposal Enter takes or where the answer is found,
 # and what a wrong answer does. Where an answer can be checked it is - the
 # domain against this machine's address, the licence server's /health, the
-# licence key by registering, the SMTP server by signing in. The words are in
+# licence key by registering. The words are in
 # one table below, in German and English: German when the locale says so,
 # English for any other, and asked once when there is no locale at all.
 # `--lang de` or `--lang en` decides it outright.
 #
-# On a first installation it offers, once the stack is healthy, to read a
-# handover archive in from the system this one replaces (ADR 39), or points
-# at the screen that does the same later. `serviceops import` does it on an
-# installation that is already running.
+# A handover archive from the system this one replaces (ADR 39), an
+# uebergabe-*.zip lying where it was started, in /root or in the home of
+# whoever ran sudo, is copied into the installation's inbox without a
+# question, said in the summary and named at the end. It is read in the
+# browser; there is no second way to read it at a terminal.
 #
 # Starting again on a machine that already has an installation:
 #
@@ -74,6 +77,14 @@ set -eu
 
 RELEASE_REPOSITORY="${SERVICEOPS_RELEASE_REPOSITORY:-ghcr.io/jannik-labs/serviceops-release}"
 RELEASE_TAG="${SERVICEOPS_RELEASE:-latest}"
+
+# The typesetter beside the application (ADR 232, ADR 268): WeasyPrint, and
+# not a line of ours, so it is a public image pulled like the base one - the
+# very one the release was built with, which the opened bundle names by digest
+# (ticket #265). Naming one here takes that instead. It is required (#298):
+# every document is set by it, so an installation that cannot fetch it stops
+# before anything is written.
+TYPESETTER_IMAGE="${SERVICEOPS_TYPESETTER_IMAGE:-}"
 INSTALL_DIR="${SERVICEOPS_DIR:-/opt/serviceops}"
 
 # Where this was started from. The script moves into the installation to
@@ -247,8 +258,8 @@ en backup_key.wrong With a wrong key the backup does not open; the installation 
 de backup_key.invalid Das ist kein Backup-Schlüssel: 64 Zeichen aus 0-9 und a-f. Es wurde nichts verändert.
 en backup_key.invalid That is not a backup key: 64 characters of 0-9 and a-f. Nothing was changed.
 
-de questions.step Drei Fragen zur Installation
-en questions.step Three questions about the installation
+de questions.step Wo die Installation erreichbar ist
+en questions.step Where the installation is reached
 de domain.label Domain
 en domain.label Domain
 de domain.what Die Adresse, unter der Ihr Team ServiceOps im Browser öffnet, ohne https://, zum Beispiel service.ihre-firma.de. Für sie holt die Installation selbst ein Zertifikat.
@@ -284,118 +295,6 @@ en domain.ip_mode Reached at https://@IP@ with a certificate this machine signs 
 de domain.no_ip Keine Domain angegeben, und dieser Server konnte seine eigene Adresse nicht herausfinden.
 en domain.no_ip No domain given and this machine could not work out its own address.
 
-de admin_email.label E-Mail-Adresse des ersten Administrators
-en admin_email.label E-mail address of the first administrator
-de admin_email.what Ihre E-Mail-Adresse. An sie schickt die Zertifizierungsstelle Hinweise zum Zertifikat, und mit ihr wird das erste Administratorkonto angelegt, wenn Sie gleich Daten übernehmen.
-en admin_email.what Your e-mail address. The certificate authority sends its notices there, and the first administrator account is made with it if you take data over in a moment.
-de admin_email.recommended eine Adresse, die jemand liest.
-en admin_email.recommended an address somebody reads.
-de admin_email.find Ihre eigene Adresse; sie lässt sich nicht erraten, daher kein Vorschlag.
-en admin_email.find your own address; it cannot be guessed, so nothing is proposed.
-de admin_email.wrong Eine vertippte Adresse bekommt keine Hinweise zum Zertifikat. Ein Konto lässt sich später unter Verwaltung → Personen ändern.
-en admin_email.wrong A mistyped address gets no certificate notices. An account can be changed later under Administration → People.
-de admin_email.invalid Das ist keine E-Mail-Adresse.
-en admin_email.invalid That is not an e-mail address.
-de restore_email.label Ihre E-Mail-Adresse, für Hinweise zum Zertifikat
-en restore_email.label Your e-mail address, for certificate notices
-de restore_email.what Die Konten kommen mit der Sicherung zurück. Die Adresse wird trotzdem gebraucht: An sie schickt die Zertifizierungsstelle Hinweise zum Zertifikat.
-en restore_email.what The accounts come back with the backup. The address is still needed: the certificate authority sends its notices there.
-de restore_email.recommended eine Adresse, die jemand liest.
-en restore_email.recommended an address somebody reads.
-de restore_email.find Ihre eigene Adresse; sie lässt sich nicht erraten, daher kein Vorschlag.
-en restore_email.find your own address; it cannot be guessed, so nothing is proposed.
-de restore_email.wrong Eine vertippte Adresse bekommt keine Hinweise zum Zertifikat.
-en restore_email.wrong A mistyped address gets no certificate notices.
-
-de mail.label E-Mail-Versand
-en mail.label Sending mail
-de mail.what Damit die Installation Kunden Serviceberichte und Ihrem Team Einladungen schicken kann, braucht sie einen Server, über den sie Mails versendet (SMTP). Ohne ihn verschickt sie nichts, und jeder Bildschirm, der etwas verschicken würde, sagt das deutlich.
-en mail.what For the installation to send customers their service reports and your team its invitations, it needs a server to send mail through (SMTP). Without one it sends nothing, and every screen that would have sent something says so plainly.
-de mail.recommended später, unter Einstellungen in ServiceOps selbst: Dort liegt das Passwort versiegelt, und es lässt sich ohne Kommandozeile ändern. Jetzt nur, wenn Sie die Zugangsdaten zur Hand haben.
-en mail.recommended later, under Settings in ServiceOps itself: the password is kept sealed there and can be changed without a shell. Now only if you have the details to hand.
-de mail.proposal 2, später unter Einstellungen.
-en mail.proposal 2, later under Settings.
-de mail.wrong Falsche Angaben prüft das Installationsprogramm gleich, indem es sich beim SMTP-Server anmeldet.
-en mail.wrong The installer checks wrong details at once, by signing in to the SMTP server.
-de mail.option1 Jetzt einrichten
-en mail.option1 Set it up now
-de mail.option2 Später unter Einstellungen (empfohlen)
-en mail.option2 Later under Settings (recommended)
-de smtp_host.label SMTP-Server
-en smtp_host.label SMTP server
-de smtp_host.what Der Name des Servers, über den Ihr E-Mail-Anbieter Mails annimmt, etwa smtp.ionos.de oder smtp.office365.com.
-en smtp_host.what The name of the server your mail provider takes mail through, such as smtp.ionos.de or smtp.office365.com.
-de smtp_host.recommended der Server des Postfachs, von dem aus ServiceOps schreiben soll.
-en smtp_host.recommended the server of the mailbox ServiceOps should write from.
-de smtp_host.find in der Hilfe Ihres E-Mail-Anbieters unter SMTP oder Postausgangsserver. Leer lassen, um das später unter Einstellungen zu tun.
-en smtp_host.find in your mail provider's help, under SMTP or outgoing mail server. Leave it empty to do this later under Settings.
-de smtp_host.wrong Über einen falschen Server geht keine Mail hinaus; das Installationsprogramm versucht gleich, ihn zu erreichen.
-en smtp_host.wrong No mail leaves through a wrong server; the installer tries to reach it in a moment.
-de smtp_port.label Port
-en smtp_port.label Port
-de smtp_port.what Die Nummer, unter der der Server Mails annimmt: 587 (STARTTLS) oder 465 (TLS).
-en smtp_port.what The number the server takes mail on: 587 (STARTTLS) or 465 (TLS).
-de smtp_port.recommended 587, den fast jeder Anbieter nimmt.
-en smtp_port.recommended 587, which almost every provider takes.
-de smtp_port.proposal (bei fast jedem Anbieter üblich).
-en smtp_port.proposal (usual with almost every provider).
-de smtp_port.wrong Unter einem falschen Port ist der Server nicht zu erreichen; das zeigt die Prüfung gleich.
-en smtp_port.wrong On a wrong port the server cannot be reached; the check shows it in a moment.
-de smtp_port.invalid Der Port ist eine Zahl, meist 587 oder 465.
-en smtp_port.invalid The port is a number, usually 587 or 465.
-de smtp_user.label Benutzername
-en smtp_user.label User name
-de smtp_user.what Der Name, mit dem sich die Installation beim SMTP-Server anmeldet; meist die E-Mail-Adresse des Postfachs.
-en smtp_user.what The name the installation signs in to the SMTP server with; usually the mailbox's e-mail address.
-de smtp_user.recommended die Adresse des Postfachs, von dem aus ServiceOps schreibt.
-en smtp_user.recommended the address of the mailbox ServiceOps writes from.
-de smtp_user.proposal (Ihre Adresse von oben).
-en smtp_user.proposal (your address from above).
-de smtp_user.wrong Mit einem falschen Namen lehnt der Server die Anmeldung ab; das zeigt die Prüfung gleich.
-en smtp_user.wrong With a wrong name the server refuses the sign-in; the check shows it in a moment.
-de smtp_password.label Passwort für den Mailversand
-en smtp_password.label Password for sending mail
-de smtp_password.what Das Passwort dieses Postfachs. Die Eingabe bleibt unsichtbar; das Passwort steht danach nur in der Datei .env dieser Installation, die nur root lesen kann.
-en smtp_password.what That mailbox's password. What you type stays invisible; afterwards it is only in this installation's .env, which only root can read.
-de smtp_password.recommended ein eigenes Postfach oder App-Passwort nur für ServiceOps.
-en smtp_password.recommended a mailbox or app password for ServiceOps alone.
-de smtp_password.find bei Ihrem E-Mail-Anbieter; manche verlangen für Programme ein eigenes App-Passwort.
-en smtp_password.find with your mail provider; some want an app password of its own for programs.
-de smtp_password.wrong Mit einem falschen Passwort lehnt der Server die Anmeldung ab; das zeigt die Prüfung gleich.
-en smtp_password.wrong With a wrong password the server refuses the sign-in; the check shows it in a moment.
-de mail_from.label Absenderadresse
-en mail_from.label Address it sends from
-de mail_from.what Die Adresse, die beim Empfänger als Absender steht.
-en mail_from.what The address a recipient sees as the sender.
-de mail_from.recommended dieselbe Adresse wie der Benutzername; viele Anbieter lehnen eine andere ab.
-en mail_from.recommended the same address as the user name; many providers refuse any other.
-de mail_from.proposal (der Benutzername).
-en mail_from.proposal (the user name).
-de mail_from.wrong Lehnt der Anbieter den Absender ab, kommt keine Mail an; unter Einstellungen lässt er sich ändern.
-en mail_from.wrong If the provider refuses the sender, no mail arrives; it can be changed under Settings.
-de mail_from.invalid Das ist keine E-Mail-Adresse.
-en mail_from.invalid That is not an e-mail address.
-de smtp.checking @HOST@:@PORT@ wird versucht …
-en smtp.checking Trying @HOST@:@PORT@ …
-de smtp.ok Der SMTP-Server hat die Anmeldung angenommen.
-en smtp.ok The SMTP server accepted the sign-in.
-de smtp.login Der SMTP-Server lehnt Benutzername oder Passwort ab.
-en smtp.login The SMTP server refuses the user name or the password.
-de smtp.unknown_host Einen Server @HOST@ gibt es nicht.
-en smtp.unknown_host There is no server called @HOST@.
-de smtp.no_connection @HOST@:@PORT@ ist nicht zu erreichen. Manche Hoster sperren ausgehende Mail-Ports; dann hilft dort eine Freigabe.
-en smtp.no_connection @HOST@:@PORT@ cannot be reached. Some hosting providers block outgoing mail ports; they can open them.
-de smtp.tls Die verschlüsselte Verbindung zu @HOST@:@PORT@ kam nicht zustande.
-en smtp.tls The encrypted connection to @HOST@:@PORT@ did not come about.
-de smtp.other Der SMTP-Server antwortet nicht wie erwartet (curl @CODE@).
-en smtp.other The SMTP server does not answer as expected (curl @CODE@).
-de smtp_problem.option1 Angaben neu eingeben
-en smtp_problem.option1 Type the details again
-de smtp_problem.option2 Trotzdem so speichern
-en smtp_problem.option2 Keep them as they are
-de smtp_problem.option3 Ohne E-Mail weiter, später unter Einstellungen
-en smtp_problem.option3 Carry on without mail, and set it up later under Settings
-
 de proxy.label Ports 80 und 443
 en proxy.label Ports 80 and 443
 de proxy.what Auf Port 80 oder 443 hört schon ein anderes Programm. ServiceOps bringt einen eigenen Webserver (Caddy) mit, der genau dort das Zertifikat holt und die Installation ausliefert.
@@ -421,14 +320,8 @@ de summary.domain Domain: @DOMAIN@, mit einem Zertifikat von Let's Encrypt
 en summary.domain Domain: @DOMAIN@, with a certificate from Let's Encrypt
 de summary.domain_ip Adresse: @DOMAIN@, mit einem selbst ausgestellten Zertifikat
 en summary.domain_ip Address: @DOMAIN@, with a certificate it signs itself
-de summary.email E-Mail-Adresse: @EMAIL@
-en summary.email E-mail address: @EMAIL@
 de summary.licence Lizenzserver: @ADDRESS@, Lizenzschlüssel @KEY@
 en summary.licence Licence server: @ADDRESS@, licence key @KEY@
-de summary.mail E-Mail-Versand: über @HOST@:@PORT@ als @USER@, Absender @FROM@
-en summary.mail Sending mail: through @HOST@:@PORT@ as @USER@, from @FROM@
-de summary.mail_later E-Mail-Versand: später unter Einstellungen
-en summary.mail_later Sending mail: later under Settings
 de summary.do Was jetzt geschieht:
 en summary.do What happens now:
 de summary.fresh die bestehende Installation in @DIR@ vollständig löschen: Datenbank, Dateien, Sicherungen, Container und Volumes
@@ -441,6 +334,8 @@ de summary.fetch sich beim Lizenzserver anmelden, von ihm den Schlüssel für di
 en summary.fetch register with the licence server, take from it the key of the newest version your licence covers, fetch that version from @RELEASE@ and open it
 de summary.write die Installation nach @DIR@ schreiben
 en summary.write write the installation to @DIR@
+de summary.inbox @FILE@ in den Übernahmeordner legen; das Original bleibt, wo es ist
+en summary.inbox lay @FILE@ into the inbox; the original stays where it is
 de summary.restore @FILE@ zurückspielen, mit dem angegebenen Backup-Schlüssel
 en summary.restore put @FILE@ back into it, locked with the backup key you gave
 de summary.https https://@DOMAIN@ ausliefern und das Zertifikat selbst holen
@@ -453,8 +348,6 @@ de summary.firewall nur die Ports 22, 80 und 443 durch die Firewall lassen
 en summary.firewall allow only ports 22, 80 and 443 through the firewall
 de summary.swap 2 GB Auslagerungsspeicher anlegen, weil dieser Server nur @RAM@ MB Arbeitsspeicher hat
 en summary.swap add 2 GB of swap, because this machine has @RAM@ MB of memory
-de summary.takeover zuletzt fragen, ob Daten aus einem anderen System übernommen werden sollen
-en summary.takeover ask, last, whether to take data over from another system
 de summary.go Installieren?
 en summary.go Install?
 de summary.no Es wurde nichts verändert. Nächster Schritt: das Installationsprogramm erneut starten, wenn Sie so weit sind.
@@ -496,6 +389,10 @@ de assemble.step Die Anwendung wird zusammengesetzt
 en assemble.step Assembling the application
 de assemble.no_base Das Basis-Image @IMAGE@ ließ sich nicht holen. Es muss auf ghcr.io öffentlich sein, und dieser Server muss es erreichen.
 en assemble.no_base Could not fetch the base image @IMAGE@. It has to be public on ghcr.io, and this machine has to reach it.
+de assemble.no_typesetter Der Setzer @IMAGE@ ließ sich nicht holen. Ohne ihn lässt sich kein Dokument erzeugen, deshalb wird nicht installiert. Er muss auf ghcr.io öffentlich sein, und dieser Server muss es erreichen.
+en assemble.no_typesetter Could not fetch the typesetter @IMAGE@. Without it no document can be made, so nothing is installed. It has to be public on ghcr.io, and this machine has to reach it.
+de assemble.no_typesetter_named Dieses Release nennt keinen Setzer. Ohne ihn lässt sich kein Dokument erzeugen, deshalb wird nicht installiert. Sagen Sie es dem Hersteller.
+en assemble.no_typesetter_named This release names no typesetter. Without it no document can be made, so nothing is installed. Tell the maker.
 de assemble.failed Das Zusammensetzen ist fehlgeschlagen. Die Ausgabe oben sagt, warum.
 en assemble.failed Assembling the image failed. The output above says why.
 de lay.step Die Installation wird angelegt
@@ -554,131 +451,6 @@ en licence.other The licence server did not answer as expected (@CODE@).
 de licence.later Die Installation läuft trotzdem und fragt jeden Tag wieder; bis dahin laufen die Module zur Probe. Berichtigen mit "serviceops connect", prüfen unter Verwaltung → Erweiterungen.
 en licence.later The installation runs anyway and asks again every day; until then its modules run on their trial. Put it right with "serviceops connect" and check under Administration → Extensions.
 
-de takeover.step Daten aus einem anderen System
-en takeover.step Data from another system
-de takeover.label Daten aus einem anderen System übernehmen?
-en takeover.label Take data over from another system?
-de takeover.what Wer von einem anderen Programm kommt, bringt seine Daten als Übergabearchiv mit: eine ZIP-Datei (uebergabe-JJJJ-MM-TT.zip), die das alte System beim Export schreibt, mit Kunden, Maschinen, Vorgängen, Berichten, Lager und Dateien. Dazu gehört eine Passphrase, die der Export einmal angezeigt hat; sie öffnet die Passwörter, damit sich alle mit ihrem bisherigen Passwort anmelden.
-en takeover.what Coming from another program, a business brings its data as a handover archive: a ZIP file (uebergabe-YYYY-MM-DD.zip) the old system writes when it exports, with customers, machines, cases, reports, stock and files. With it comes a passphrase the export showed once; it opens the passwords, so that everybody signs in with the password they already have.
-de takeover.recommended jetzt, wenn das Archiv schon auf diesem Server liegt: Am Terminal kommt die Passphrase genau so an, wie sie getippt ist. Sonst später über die Oberfläche.
-en takeover.recommended now, if the archive is on this machine already: at a terminal the passphrase arrives exactly as typed. Otherwise later, through the screen.
-de takeover.proposal 2, später über die Oberfläche.
-en takeover.proposal 2, later through the screen.
-de takeover.wrong Dasselbe Archiv noch einmal zu lesen ist sicher: Was schon da ist, wird übersprungen oder aktualisiert, nie doppelt angelegt. Nur ein zweiter Betrieb gehört nicht in dieselbe Installation.
-en takeover.wrong Reading the same archive again is safe: what is in already is passed by or brought up to date, never added twice. Only a second business does not belong in the same installation.
-de takeover.option1 Jetzt übernehmen
-en takeover.option1 Take it over now
-de takeover.option2 Später über die Oberfläche
-en takeover.option2 Later, through the screen
-de takeover.option3 Nein, ich fange ohne alte Daten an
-en takeover.option3 No, I start without old data
-de takeover.later Später: Anmelden, dann Verwaltung → Datenübernahme; dort das Archiv hochladen und die Passphrase eingeben. Am Terminal geht es mit: serviceops import <archiv>
-en takeover.later Later: sign in, then Administration → Bringing a business over; upload the archive there and give the passphrase. At a terminal: serviceops import <archive>
-de import_as.label Unter welchem Administrator?
-en import_as.label As which administrator?
-de import_as.what Eine Übernahme wird, wie jede Änderung, auf eine Person gebucht. Bei der ersten Installation ist das der erste Administrator: Er wird jetzt mit dieser Adresse angelegt, und mit ihr melden Sie sich danach an.
-en import_as.what A takeover is recorded against a person, like every change. On a first installation that is the first administrator: the account is made now with this address, and you sign in with it afterwards.
-de import_as.recommended Ihre Adresse von oben.
-en import_as.recommended your address from above.
-de import_as.proposal (Ihre Adresse von oben).
-en import_as.proposal (your address from above).
-de import_as.wrong Eine vertippte Adresse wird Ihr Anmeldename; ändern lässt sie sich unter Verwaltung → Personen.
-en import_as.wrong A mistyped address becomes your sign-in name; it can be changed under Administration → People.
-de import_as.invalid Das ist keine E-Mail-Adresse.
-en import_as.invalid That is not an e-mail address.
-de admin_name.label Ihr Name
-en admin_name.label Your name
-de admin_name.what Der Name, unter dem andere Sie in ServiceOps sehen.
-en admin_name.what The name other people see you by in ServiceOps.
-de admin_name.recommended Vor- und Nachname.
-en admin_name.recommended first name and surname.
-de admin_name.find Ihr eigener Name; er wird nicht vorgeschlagen.
-en admin_name.find your own name; nothing is proposed.
-de admin_name.wrong Ein Tippfehler lässt sich später im eigenen Profil ändern.
-en admin_name.wrong A typo can be put right later in your own profile.
-de admin_name.invalid Ein Name wird gebraucht.
-en admin_name.invalid A name is needed.
-de admin_password.label Passwort
-en admin_password.label Password
-de admin_password.what Das Passwort für dieses Konto: mindestens 12 Zeichen und nicht leicht zu erraten. Der Server prüft es und sagt, wenn es nicht reicht. Die Eingabe bleibt unsichtbar und wird nirgends gespeichert. Nach der ersten Anmeldung richten Sie einen zweiten Faktor ein, eine App auf dem Telefon.
-en admin_password.what The password for this account: at least 12 characters and not easy to guess. The server judges it and says when it will not do. What you type stays invisible and is kept nowhere. After the first sign-in you set up a second factor, an app on your phone.
-de admin_password.recommended ein langer Satz aus mehreren Wörtern, oder ein Passwort aus Ihrem Passwortmanager.
-en admin_password.recommended a long sentence of several words, or one from your password manager.
-de admin_password.find denken Sie sich eins aus; es wird nicht vorgeschlagen.
-en admin_password.find make one up; nothing is proposed.
-de admin_password.wrong Ein vergessenes Passwort setzt der Link "Passwort vergessen" auf der Anmeldeseite zurück, sobald Mails hinausgehen.
-en admin_password.wrong A forgotten password is reset with "Forgotten password" on the sign-in page, once mail goes out.
-de admin_password.again Passwort wiederholen
-en admin_password.again Password again
-de admin_password.mismatch Die beiden Eingaben sind verschieden. Bitte noch einmal.
-en admin_password.mismatch The two do not match. Once more, please.
-de admin_password.invalid Ein Passwort wird gebraucht.
-en admin_password.invalid A password is needed.
-de admin.created @EMAIL@ kann sich jetzt anmelden.
-en admin.created @EMAIL@ can sign in now.
-de admin.password_too_short Das Passwort ist zu kurz: mindestens 12 Zeichen.
-en admin.password_too_short The password is too short: at least 12 characters.
-de admin.password_too_common Dieses Passwort steht auf einer Liste häufiger Passwörter.
-en admin.password_too_common This password is on a list of common passwords.
-de admin.password_not_allowed Dieses Passwort ist hier nicht erlaubt.
-en admin.password_not_allowed This password is not allowed here.
-de admin.password_too_easy_to_guess Dieses Passwort ist zu leicht zu erraten.
-en admin.password_too_easy_to_guess This password is too easy to guess.
-de admin.failed Das Konto wurde nicht angelegt (@CODE@).
-en admin.failed The account was not made (@CODE@).
-de admin.given_up Ohne Administrator wird nichts übernommen. Später: den Link unten öffnen, den Administrator anlegen, dann Verwaltung → Datenübernahme.
-en admin.given_up Without an administrator nothing is taken over. Later: open the link below, make the administrator, then Administration → Bringing a business over.
-de archive.label Pfad zum Archiv
-en archive.label Path to the archive
-de archive.what Wo das Übergabearchiv auf diesem Server liegt, als ganzer Pfad. Es bleibt, wo es ist, und wird nicht verändert.
-en archive.what Where the handover archive is on this machine, as a whole path. It stays where it is and is not changed.
-de archive.recommended /root/ auf diesem Server.
-en archive.recommended /root/ on this machine.
-de archive.proposal (das neueste uebergabe-*.zip, das hier gefunden wurde).
-en archive.proposal (the newest uebergabe-*.zip found here).
-de archive.find dort, wohin Sie es kopiert haben, etwa /root/uebergabe-2026-10-02.zip. Leer lassen, um es später zu übernehmen.
-en archive.find wherever you copied it to, such as /root/uebergabe-2026-10-02.zip. Leave it empty to take it over later.
-de archive.wrong Eine Datei, die kein Übergabearchiv ist, lehnt die Übernahme ab, bevor sie etwas schreibt.
-en archive.wrong A file that is no handover archive is refused before anything is written.
-de archive.copy Liegt es noch auf Ihrem Rechner, kopieren Sie es von dort hierher, zum Beispiel: scp uebergabe-2026-10-02.zip root@@HOST@:/root/
-en archive.copy If it is still on your own computer, copy it here from there, for example: scp uebergabe-2026-10-02.zip root@@HOST@:/root/
-de archive.missing Unter @FILE@ liegt keine Datei.
-en archive.missing There is no file at @FILE@.
-de archive.unreadable Die Installation darf @FILE@ nicht lesen. Für alle lesbar machen (chmod a+r)?
-en archive.unreadable The installation may not read @FILE@. Make it readable to all (chmod a+r)?
-de passphrase.label Passphrase
-en passphrase.label Passphrase
-de passphrase.what Die Passphrase, die das alte System beim Export einmal angezeigt hat. Sie öffnet den versiegelten Umschlag mit den Passwörtern. Sie geht nur über die Standardeingabe an die Übernahme: nie in eine Befehlszeile, eine Datei oder ein Protokoll.
-en passphrase.what The passphrase the old system showed once when it exported. It opens the sealed envelope of passwords. It reaches the import on standard input only: never on a command line, in a file or in a log.
-de passphrase.recommended genau so eingeben, wie sie notiert ist, auch mit Leerzeichen am Anfang oder Ende.
-en passphrase.recommended type it exactly as written down, spaces at either end included.
-de passphrase.find dort, wo Sie sie beim Export notiert haben. Leer lassen, wenn es keine gibt: Dann bleibt der Umschlag zu, und jeder vergibt sich ein neues Passwort.
-en passphrase.find wherever you wrote it down at the export. Leave it empty if there is none: the envelope then stays sealed and everybody sets a new password.
-de passphrase.wrong Mit einer falschen Passphrase kommen alle Datensätze trotzdem an, nur der Umschlag bleibt zu. Das Installationsprogramm bietet dann an, das Archiv mit der richtigen noch einmal zu lesen.
-en passphrase.wrong With a wrong passphrase every record arrives all the same and only the envelope stays sealed. The installer then offers to read the archive again with the right one.
-de import.step Das Archiv wird gelesen
-en import.step Reading the archive
-de import.patience Bei vielen Fotos dauert das eine Weile. Darunter steht die Abrechnung der Übernahme, auf Englisch: was hinzukam, was aktualisiert, was übersprungen und was abgelehnt wurde, und wer sich mit seinem bisherigen Passwort anmelden kann.
-en import.patience With many photographs this takes a while. Below is the import's reckoning: what was added, brought up to date, passed by and refused, and who can sign in with the password they already have.
-de import.ok Die Übernahme ist gelungen: Die Datensätze sind da, und jede Zahl, die das alte System zeigte, stimmt hier.
-en import.ok The takeover succeeded: the records are in, and every figure the old system showed matches here.
-de import.refused Die Übernahme ist nicht gelungen: Das Archiv wurde ganz abgelehnt, und es wurde nichts geschrieben. Der Grund steht oben.
-en import.refused The takeover did not succeed: the archive was refused whole and nothing was written. The reason is above.
-de import.stopped Die Übernahme ist nur zum Teil gelungen: Das Lesen hielt bei einem Datensatz an, alles davor ist da. Ursache beheben und dasselbe Archiv noch einmal lesen: serviceops import <archiv>
-en import.stopped The takeover succeeded only in part: the reading stopped at one record and everything before it is in. Fix the cause and read the same archive again: serviceops import <archive>
-de import.differs Die Datensätze sind da, aber nicht jede Zahl stimmt mit dem alten System überein; die Tabelle oben nennt sie.
-en import.differs The records are in, but not every figure matches the old system; the table above names them.
-de import.failed Die Übernahme ist nicht gelungen. Die Ausgabe oben sagt, warum.
-en import.failed The takeover did not succeed. The output above says why.
-de import.wrong_passphrase Die Datensätze sind da, aber die Passphrase war falsch: Der Umschlag mit den Passwörtern ist zu.
-en import.wrong_passphrase The records are in, but the passphrase was wrong: the envelope of passwords is sealed.
-de import.again Mit der richtigen Passphrase noch einmal lesen?
-en import.again Read it again with the right passphrase?
-de import.safe Erneutes Lesen ist sicher: Was schon da ist, wird übersprungen oder aktualisiert, nie doppelt angelegt.
-en import.safe Reading it again is safe: what is in already is passed by or brought up to date, never added twice.
-de import.sealed_later Der Umschlag lässt sich auch später öffnen, unter Verwaltung → Datenübernahme.
-en import.sealed_later The envelope can also be opened later, under Administration → Bringing a business over.
-
 de result.backup_title BACKUP-SCHLÜSSEL - einmal angezeigt, bitte zusätzlich aufbewahren
 en result.backup_title BACKUP KEY - shown once, keep a copy of it
 de result.backup_why Ohne ihn ist jede Sicherung dieser Installation unlesbar. Diese Installation hält ihn selbst, damit sie Sicherungen im Tool einspielen kann; geht der Server verloren, ist er mit ihm weg. Bewahren Sie ihn deshalb auch dort auf, wo er diesen Server überlebt: in einem Passwortmanager, auf Papier in einem anderen Gebäude.
@@ -695,12 +467,12 @@ de result.setup_once Der Link gilt, bis das erste Konto existiert, danach nie wi
 en result.setup_once The link works until the first account exists and then never again.
 de result.restored Die Anhänge kamen mit der Hälfte daneben zurück. Neu eingerichtet werden zwei Dinge, weil sie mit dem Geheimnis der alten Installation versiegelt waren: das Mail-Passwort unter Einstellungen und jeder zweite Faktor; wer einen hatte, meldet sich mit einem Wiederherstellungscode an und richtet ihn neu ein. Neue Sicherungen sind für den angegebenen Backup-Schlüssel verschlossen; diese Installation hält ihn, damit Sicherungen im Tool eingespielt werden können.
 en result.restored The attachments came back from the half beside it. Two things are set up again, because they were sealed with the old installation's secret: the mail password under Settings, and every second factor; somebody who had one signs in with a recovery code and sets it up again. New backups are locked for the backup key you gave; this installation holds it, so that backups can be put back from the tool.
-de result.done Fertig: ServiceOps @VERSION@ läuft unter @ORIGIN@.
-en result.done Done: ServiceOps @VERSION@ is running at @ORIGIN@.
-de result.next_setup diesen Link einmal öffnen und den ersten Administrator anlegen: @LINK@
-en result.next_setup open this link once and make the first administrator: @LINK@
-de result.next_sign_in @ORIGIN@ öffnen und als @EMAIL@ anmelden.
-en result.next_sign_in open @ORIGIN@ and sign in as @EMAIL@.
+de result.done Fertig: ServiceOps @VERSION@ läuft.
+en result.done Done: ServiceOps @VERSION@ is running.
+de result.next_setup diesen Link öffnen, dort Ihr Konto anlegen; alles Weitere geht im Browser: @LINK@
+en result.next_setup open this link and make your account there; everything else is done in the browser: @LINK@
+de result.inbox @FILE@ liegt im Übernahmeordner @DIR@; der Assistent bietet es nach dem ersten Konto an.
+en result.inbox @FILE@ is in the inbox @DIR@; the assistant offers it once the first account exists.
 de result.next_restored @ORIGIN@ öffnen und mit einem Konto aus der Sicherung anmelden.
 en result.next_restored open @ORIGIN@ and sign in with an account from the backup.
 TEXTS
@@ -811,8 +583,6 @@ explain() {
     fi
     para "$(t word.wrong) $(t "$1.wrong")"
 }
-
-is_email() { printf '%s' "$1" | grep -Eq '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'; }
 
 # --------------------------------------------------------------- options --
 
@@ -1071,8 +841,10 @@ while :; do
     [ "$(choose domain_problem 1)" = 2 ] && break
 done
 
+# No address goes to the certificate authority: Caddy obtains and renews the
+# certificate without one, and an address asked for that alone would be a
+# question the machine does not need answered (#281).
 TLS_DIRECTIVE=''
-ACME_EMAIL=''
 if [ -z "$DOMAIN" ]; then
     [ -n "$PUBLIC_IP" ] || die "$(t domain.no_ip)"
     DOMAIN="$PUBLIC_IP"
@@ -1080,105 +852,21 @@ if [ -z "$DOMAIN" ]; then
     note "$(t domain.ip_mode IP "$DOMAIN")"
 fi
 
-# The accounts come back with a restore. The address is still wanted, for
-# the certificate authority and as the address mail is sent from.
-EMAIL_QUESTION='admin_email'
-[ "$RESTORE" = yes ] && EMAIL_QUESTION='restore_email'
-if [ "$EMAIL_QUESTION" = restore_email ]; then explain restore_email; else explain admin_email; fi
-while :; do
-    ADMIN_EMAIL="$(ask "$(t "$EMAIL_QUESTION.label")" '' | tr -d ' \t')"
-    is_email "$ADMIN_EMAIL" && break
-    note "$(t admin_email.invalid)"
-done
-
-if [ -z "$TLS_DIRECTIVE" ]; then
-    ACME_EMAIL="email $ADMIN_EMAIL"
-fi
-
-# urlencode TEXT: TEXT with everything but letters, digits and -._~ as %XX,
-# for the user and the password inside MAILER_DSN. Read through a pipe, so
-# a password is on no command line.
-urlencode() {
-    printf '%s' "$1" | od -An -tx1 -v | tr ' ' '\n' | sed '/^$/d' | while IFS= read -r _hex; do
-        case "$_hex" in
-            3[0-9]|4[1-9a-f]|5[0-9a]|6[1-9a-f]|7[0-9a]|2d|2e|5f|7e)
-                # shellcheck disable=SC2059 # the octal escape is the point
-                printf "\\$(printf '%03o' "0x$_hex")" ;;
-            *) printf '%%%s' "$(printf '%s' "$_hex" | tr '[:lower:]' '[:upper:]')" ;;
-        esac
-    done
-}
-
-# Signs in to the SMTP server as the installation would, and says nothing.
-# curl gets the credentials as a config on standard input, never as an
-# argument. Sets SMTP_CODE to curl's exit code: 0, or 8 when the server
-# answers the closing HELP oddly, mean it took the sign-in.
-smtp_check() {
-    _scheme='smtp'
-    [ "$SMTP_PORT" = 465 ] && _scheme='smtps'
-    SMTP_CODE=0
-    printf 'user = "%s"\n' "$(printf '%s' "$SMTP_USER:$SMTP_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')" \
-        | curl -sS --max-time 20 --ssl -K - "$_scheme://$SMTP_HOST:$SMTP_PORT" >/dev/null 2>&1 || SMTP_CODE=$?
-}
-
-# Asks for the SMTP details and checks them. Sets MAILER_DSN, MAIL_FROM and
-# MAIL_SUMMARY, or leaves mail for later.
-ask_for_mail() {
-    _explained=''
-    while :; do
-        [ -n "$_explained" ] || explain smtp_host
-        SMTP_HOST="$(ask "$(t smtp_host.label)" '' | tr -d ' \t')"
-        [ -n "$SMTP_HOST" ] || return 0
-        [ -n "$_explained" ] || explain smtp_port 587
-        while :; do
-            SMTP_PORT="$(ask "$(t smtp_port.label)" 587 | tr -d ' \t')"
-            case "$SMTP_PORT" in ''|*[!0-9]*) note "$(t smtp_port.invalid)" ;; *) break ;; esac
-        done
-        [ -n "$_explained" ] || explain smtp_user "$ADMIN_EMAIL"
-        SMTP_USER="$(ask "$(t smtp_user.label)" "$ADMIN_EMAIL" | tr -d ' \t')"
-        [ -n "$_explained" ] || explain smtp_password
-        SMTP_PASSWORD="$(ask_hidden "$(t smtp_password.label)")"
-        _from="$ADMIN_EMAIL"
-        is_email "$SMTP_USER" && _from="$SMTP_USER"
-        [ -n "$_explained" ] || explain mail_from "$_from"
-        while :; do
-            MAIL_FROM="$(ask "$(t mail_from.label)" "$_from" | tr -d ' \t')"
-            is_email "$MAIL_FROM" && break
-            note "$(t mail_from.invalid)"
-        done
-        _explained='yes'
-
-        note "$(t smtp.checking HOST "$SMTP_HOST" PORT "$SMTP_PORT")"
-        smtp_check
-        _keep='no'
-        case "$SMTP_CODE" in
-            0|8) ok "$(t smtp.ok)"; _keep='yes' ;;
-            67) note "$(t smtp.login)" ;;
-            6) note "$(t smtp.unknown_host HOST "$SMTP_HOST")" ;;
-            7|28) note "$(t smtp.no_connection HOST "$SMTP_HOST" PORT "$SMTP_PORT")" ;;
-            35|58|59|60|64|66|77|83|90|91) note "$(t smtp.tls HOST "$SMTP_HOST" PORT "$SMTP_PORT")" ;;
-            *) note "$(t smtp.other CODE "$SMTP_CODE")" ;;
-        esac
-        if [ "$_keep" = no ]; then
-            case "$(choose smtp_problem 1)" in
-                1) continue ;;
-                3) MAIL_FROM=''; SMTP_PASSWORD=''; return 0 ;;
-            esac
-        fi
-        MAILER_DSN="smtp://$(urlencode "$SMTP_USER"):$(urlencode "$SMTP_PASSWORD")@$SMTP_HOST:$SMTP_PORT"
-        SMTP_PASSWORD=''
-        MAIL_SUMMARY="$(t summary.mail HOST "$SMTP_HOST" PORT "$SMTP_PORT" USER "$SMTP_USER" FROM "$MAIL_FROM")"
-        return 0
-    done
-}
-
+# Mail is set up in the browser, under Settings, where the password is kept
+# sealed and a test message checks it. Until then nothing is sent, and every
+# screen that would send something says so.
 MAILER_DSN='null://null'
-MAIL_FROM=''
-MAIL_SUMMARY="$(t summary.mail_later)"
-explain mail
-if [ "$(choose mail 2)" = 1 ]; then
-    ask_for_mail
-fi
+
+# The newest uebergabe-*.zip where somebody is likely to have put one. Not on
+# a restore, which brings its own records back.
+newest_archive() {
+    _home="$(getent passwd "${SUDO_USER:-root}" 2>/dev/null | cut -d: -f6 || true)"
+    # shellcheck disable=SC2012 # names we made up; ls -t is the point
+    ls -t "$STARTED_IN"/uebergabe-*.zip /root/uebergabe-*.zip "${HOME:-/root}"/uebergabe-*.zip \
+        "${_home:-/root}"/uebergabe-*.zip 2>/dev/null | head -1 || true
+}
+ARCHIVE=''
+[ "$RESTORE" = yes ] || ARCHIVE="$(newest_archive)"
 
 # -------------------------------------------------------- what will happen --
 
@@ -1218,9 +906,7 @@ if [ -n "$TLS_DIRECTIVE" ]; then
 else
     note "$(t summary.domain DOMAIN "$DOMAIN")"
 fi
-note "$(t summary.email EMAIL "$ADMIN_EMAIL")"
 note "$(t summary.licence ADDRESS "$LICENCE_SERVER" KEY "$SERVER_KEY")"
-note "$MAIL_SUMMARY"
 say ''
 say "  $(t summary.do)"
 [ "$FRESH" = yes ] && say "  - $(t summary.fresh DIR "$INSTALL_DIR")"
@@ -1228,13 +914,13 @@ say "  $(t summary.do)"
 [ "$NEEDS_AGE" = yes ] && say "  - $(t summary.age)"
 say "  - $(t summary.fetch RELEASE "$RELEASE_REPOSITORY:$RELEASE_TAG")"
 say "  - $(t summary.write DIR "$INSTALL_DIR")"
+[ -z "$ARCHIVE" ] || say "  - $(t summary.inbox FILE "$ARCHIVE")"
 [ "$RESTORE" = yes ] && say "  - $(t summary.restore FILE "$BACKUP_FILE")"
 [ "$PROXY_PROFILE" = caddy ] && say "  - $(t summary.https DOMAIN "$DOMAIN")"
 say "  - $(t summary.register)"
 say "  - $(t summary.updates)"
 say "  - $(t summary.firewall)"
 [ "$NEEDS_SWAP" = yes ] && say "  - $(t summary.swap RAM "$TOTAL_RAM_MB")"
-[ "$RESTORE" = yes ] || say "  - $(t summary.takeover)"
 say ''
 
 confirm "$(t summary.go)" || die "$(t summary.no)"
@@ -1428,6 +1114,14 @@ BASE_IMAGE="$(sed -n 's/^FROM //p' "$WORK/bundle/Dockerfile" | head -1)"
 docker pull -q "$BASE_IMAGE" >/dev/null \
     || die "$(t assemble.no_base IMAGE "$BASE_IMAGE")"
 
+# The typesetter, beside it, in the version the release names. Required
+# (#298): without it no document can be made, so a release that names none,
+# or one that cannot be fetched, stops here with nothing written.
+[ -n "$TYPESETTER_IMAGE" ] || TYPESETTER_IMAGE="$(head -n 1 "$WORK/bundle/TYPESETTER" 2>/dev/null || true)"
+[ -n "$TYPESETTER_IMAGE" ] || die "$(t assemble.no_typesetter_named)"
+docker pull -q "$TYPESETTER_IMAGE" >/dev/null 2>&1 \
+    || die "$(t assemble.no_typesetter IMAGE "$TYPESETTER_IMAGE")"
+
 # The bundle's own Dockerfile: our files on a public base image, pinned by
 # digest. It copies and nothing else, which is why this takes seconds and
 # needs no toolchain.
@@ -1446,7 +1140,9 @@ IMAGE="serviceops:$RELEASE_VERSION"
 
 if [ "$FRESH" = yes ]; then
     step "$(t fresh.removing)"
-    ( cd "$INSTALL_DIR" && docker compose --profile tools --profile caddy down --volumes --remove-orphans ) || true
+    # `typesetter` for an installation from before #298, which ran it behind
+    # that profile.
+    ( cd "$INSTALL_DIR" && docker compose --profile tools --profile caddy --profile typesetter down --volumes --remove-orphans ) || true
     OLD_CONTAINERS="$(docker ps -aq --filter "label=com.docker.compose.project=$OLD_PROJECT" 2>/dev/null || true)"
     # shellcheck disable=SC2086 # one identifier per word
     [ -z "$OLD_CONTAINERS" ] || docker rm -f $OLD_CONTAINERS >/dev/null || true
@@ -1474,9 +1170,27 @@ chmod 700 "$INSTALL_DIR"
 # attachment. PostgreSQL and Caddy look after their own directories.
 chown 33:33 "$INSTALL_DIR"/data/files "$INSTALL_DIR"/data/backups
 
+# The inbox: where an archive found on this machine waits for the setup in
+# the browser to read it (#280, #283), inside the one writable directory and
+# readable by the application alone. A copy: the operator's own file stays
+# theirs.
+INBOX="$INSTALL_DIR/data/files/inbox"
+if [ -n "$ARCHIVE" ]; then
+    mkdir -p "$INBOX"
+    cp "$ARCHIVE" "$INBOX/"
+    chown -R 33:33 "$INBOX"
+    chmod 750 "$INBOX"
+    chmod 640 "$INBOX/$(basename "$ARCHIVE")"
+fi
+
 for file in compose.yaml compose.traefik.yaml Caddyfile serviceops; do
     cp "$WORK/bundle/deploy/$file" "$INSTALL_DIR/$file"
 done
+# The page Caddy shows while the app does not answer (ticket #248).
+mkdir -p "$INSTALL_DIR/maintenance"
+if [ -f "$WORK/bundle/deploy/maintenance/index.html" ]; then
+    cp "$WORK/bundle/deploy/maintenance/index.html" "$INSTALL_DIR/maintenance/index.html"
+fi
 chmod +x "$INSTALL_DIR/serviceops"
 ln -sf "$INSTALL_DIR/serviceops" /usr/local/bin/serviceops
 
@@ -1545,7 +1259,7 @@ SERVICEOPS_RELEASE_DIGEST=$RELEASE_DIGEST
 SERVICEOPS_DOMAIN=$DOMAIN
 SERVICEOPS_ORIGIN=$ORIGIN
 SERVICEOPS_TLS=$TLS_DIRECTIVE
-SERVICEOPS_ACME_EMAIL=$ACME_EMAIL
+SERVICEOPS_ACME_EMAIL=
 COMPOSE_PROFILES=$PROXY_PROFILE
 
 APP_SECRET=$APP_SECRET
@@ -1555,13 +1269,20 @@ POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 # account. See docs/adr/0029-the-first-way-in-needs-a-token-and-closes-for-good.md
 SERVICEOPS_SETUP_TOKEN=$SETUP_TOKEN
 
+# Set up in the browser, under Settings.
 MAILER_DSN=$MAILER_DSN
-MAIL_FROM=$MAIL_FROM
+MAIL_FROM=
 
 # The maker's licence server and the key it issued (ADR 111). The only place
 # this installation talks to outside itself. Empty means it talks to nobody.
 SERVICEOPS_LICENCE_SERVER=$LICENCE_SERVER
 SERVICEOPS_LICENCE_KEY=$SERVER_KEY
+
+# The typesetter beside the application (ADR 232, ADR 268), in the version
+# the release was built with; "serviceops update" moves it with every release.
+# Required: every document is set by it.
+SERVICEOPS_TYPESETTER_IMAGE=$TYPESETTER_IMAGE
+SERVICEOPS_TYPESETTER_URL=http://typesetter:8001
 
 # The public half of the backup key, which every backup is locked with. The
 # secret half is printed once by this script and kept in
@@ -1671,144 +1392,10 @@ if command -v apt-get >/dev/null 2>&1; then
     note "$(t harden.firewall SSH "${SSH_PORT:-22}")"
 fi
 
-# ----------------------------------------------------------- the takeover --
-#
-# Last, on a first installation, with the stack healthy: the records of the
-# system this one replaces, read in from a handover archive (ADR 39). The
-# import is written against a person, so the first administrator is made
-# here, with the address given above. The reading itself is
-# `serviceops import`, the same command an operator runs later; the
-# passphrase reaches it on standard input and goes no other way.
-
-ADMIN_MADE=''
-
-# Asks for the first administrator's name and password and makes the
-# account. Sets ADMIN_MADE, or leaves it empty after five refusals.
-make_the_first_administrator() {
-    explain admin_name
-    while :; do
-        ADMIN_NAME="$(ask "$(t admin_name.label)" '')"
-        [ -n "$(printf '%s' "$ADMIN_NAME" | tr -d ' \t')" ] && break
-        note "$(t admin_name.invalid)"
-    done
-    explain admin_password
-    _goes=0
-    while [ "$_goes" -lt 5 ]; do
-        _password="$(ask_hidden "$(t admin_password.label)")"
-        if [ -z "$_password" ]; then note "$(t admin_password.invalid)"; _goes=$((_goes + 1)); continue; fi
-        if [ "$_password" != "$(ask_hidden "$(t admin_password.again)")" ]; then
-            note "$(t admin_password.mismatch)"
-            continue
-        fi
-        # Through the environment of this one run, which is how the command
-        # takes a password from a script: never an argument.
-        if _said="$(SERVICEOPS_NEW_PASSWORD="$_password" docker compose --profile tools run --rm -T \
-                -e SERVICEOPS_NEW_PASSWORD console serviceops:user:create \
-                --email="$IMPORT_AS" --name="$ADMIN_NAME" --administrator --no-interaction 2>&1)"; then
-            _password=''
-            ok "$(t admin.created EMAIL "$IMPORT_AS")"
-            ADMIN_MADE="$IMPORT_AS"
-            return 0
-        fi
-        _password=''
-        _code="$(printf '%s' "$_said" | grep -o 'user\.[a-z_]*' | tail -1 || true)"
-        case "$_code" in
-            user.password_too_short|user.password_too_common|user.password_not_allowed|user.password_too_easy_to_guess)
-                note "$(t "admin.${_code#user.}")" ;;
-            *) note "$_said"; note "$(t admin.failed CODE "${_code:-?}")" ;;
-        esac
-        _goes=$((_goes + 1))
-    done
-    para "$(t admin.given_up)"
-}
-
-# The newest uebergabe-*.zip where somebody is likely to have put one.
-newest_archive() {
-    _home="$(getent passwd "${SUDO_USER:-root}" 2>/dev/null | cut -d: -f6 || true)"
-    # shellcheck disable=SC2012 # names we made up; ls -t is the point
-    ls -t "$STARTED_IN"/uebergabe-*.zip /root/uebergabe-*.zip "${HOME:-/root}"/uebergabe-*.zip \
-        "${_home:-/root}"/uebergabe-*.zip 2>/dev/null | head -1 || true
-}
-
-take_the_data_over() {
-    explain import_as "$ADMIN_EMAIL"
-    while :; do
-        IMPORT_AS="$(ask "$(t import_as.label)" "$ADMIN_EMAIL" | tr -d ' \t')"
-        is_email "$IMPORT_AS" && break
-        note "$(t import_as.invalid)"
-    done
-    make_the_first_administrator
-    if [ -z "$ADMIN_MADE" ]; then
-        return 0
-    fi
-
-    _proposal="$(newest_archive)"
-    explain archive "$_proposal"
-    para "$(t archive.copy HOST "$DOMAIN")"
-    while :; do
-        ARCHIVE="$(ask "$(t archive.label)" "$_proposal")"
-        if [ -z "$ARCHIVE" ]; then
-            para "$(t takeover.later)"
-            return 0
-        fi
-        case "$ARCHIVE" in /*) ;; *) ARCHIVE="$STARTED_IN/$ARCHIVE" ;; esac
-        if [ ! -f "$ARCHIVE" ]; then
-            note "$(t archive.missing FILE "$ARCHIVE")"
-            continue
-        fi
-        # The import runs as the application's own user, which sees this one
-        # file through a mount and nothing else around it.
-        if [ -z "$(find "$ARCHIVE" -prune -perm -004 2>/dev/null)" ]; then
-            if confirm "$(t archive.unreadable FILE "$ARCHIVE")"; then
-                chmod a+r "$ARCHIVE"
-            else
-                para "$(t takeover.later)"
-                return 0
-            fi
-        fi
-        break
-    done
-
-    explain passphrase
-    while :; do
-        PASSPHRASE="$(ask_hidden "$(t passphrase.label)")"
-        step "$(t import.step)"
-        para "$(t import.patience)"
-        IMPORTED=0
-        printf '%s\n' "$PASSPHRASE" | "$INSTALL_DIR/serviceops" import "$ARCHIVE" --as "$IMPORT_AS" || IMPORTED=$?
-        PASSPHRASE=''
-        say ''
-        case "$IMPORTED" in
-            0) ok "$(t import.ok)" ;;
-            1) para "$(t import.refused)" ;;
-            2) para "$(t import.stopped)" ;;
-            3) para "$(t import.differs)" ;;
-            4) para "$(t import.wrong_passphrase)"
-               para "$(t import.safe)"
-               if confirm "$(t import.again)"; then
-                   continue
-               fi
-               para "$(t import.sealed_later)"
-               return 0 ;;
-            *) para "$(t import.failed)" ;;
-        esac
-        para "$(t import.safe)"
-        return 0
-    done
-}
-
-if [ "$RESTORE" != yes ]; then
-    step "$(t takeover.step)"
-    explain takeover
-    case "$(choose takeover 2)" in
-        1) take_the_data_over ;;
-        2) para "$(t takeover.later)" ;;
-    esac
-fi
-
 # ------------------------------------------------------------------ done --
 #
-# What to keep, then one line: that it runs, and what to do next.
+# What to keep, then one line: that it runs, and the one link that carries
+# on in the browser.
 
 if [ "$RESTORE" = yes ]; then
     say ''
@@ -1819,13 +1406,13 @@ else
     printf '  %s%s%s\n\n' "$bold" "$(t result.backup_title)" "$off"
     printf '    %s\n\n' "$BACKUP_SECRET"
     para "$(t result.backup_why)"
-    if [ -n "$ADMIN_MADE" ]; then
-        NEXT="$(t result.next_sign_in ORIGIN "$ORIGIN" EMAIL "$ADMIN_MADE")"
-    else
+    if [ -n "$ARCHIVE" ]; then
         say ''
-        para "$(t result.setup_once)"
-        NEXT="$(t result.next_setup LINK "$ORIGIN/setup?token=$SETUP_TOKEN")"
+        para "$(t result.inbox FILE "$(basename "$ARCHIVE")" DIR "$INBOX")"
     fi
+    say ''
+    para "$(t result.setup_once)"
+    NEXT="$(t result.next_setup LINK "$ORIGIN/setup?token=$SETUP_TOKEN")"
 fi
 
 say ''
@@ -1835,4 +1422,4 @@ say "    serviceops doctor        $(t result.doctor)"
 say "    serviceops backup        $(t result.backup)"
 say "    serviceops update        $(t result.update)"
 say ''
-printf '%s%s %s %s%s\n' "$bold" "$(t result.done VERSION "$RELEASE_VERSION" ORIGIN "$ORIGIN")" "$(t word.next)" "$NEXT" "$off"
+printf '%s%s %s %s%s\n' "$bold" "$(t result.done VERSION "$RELEASE_VERSION")" "$(t word.next)" "$NEXT" "$off"
