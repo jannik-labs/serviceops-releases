@@ -1186,6 +1186,12 @@ fi
 for file in compose.yaml compose.traefik.yaml Caddyfile serviceops; do
     cp "$WORK/bundle/deploy/$file" "$INSTALL_DIR/$file"
 done
+# The recipe of the routing container (#183), built only when the operator
+# switches routing on.
+if [ -d "$WORK/bundle/deploy/routing" ]; then
+    mkdir -p "$INSTALL_DIR/routing"
+    cp "$WORK/bundle/deploy/routing/Dockerfile" "$WORK/bundle/deploy/routing/routing.sh" "$INSTALL_DIR/routing/"
+fi
 # The page Caddy shows while the app does not answer (ticket #248).
 mkdir -p "$INSTALL_DIR/maintenance"
 if [ -f "$WORK/bundle/deploy/maintenance/index.html" ]; then
