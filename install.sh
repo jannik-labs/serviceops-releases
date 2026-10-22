@@ -413,6 +413,10 @@ de start.restore_failed Die Sicherung ging nicht zurück, und es wurde nichts ge
 en start.restore_failed The backup did not go back, and nothing has been started. @DIR@ is laid down with your backup key and holds no data. Put right what the output above says, then: serviceops restore @FILE@ and serviceops start.
 de start.adopt_failed Die Installation konnte die Anmeldung des Installationsprogramms nicht übernehmen und meldet sich selbst noch einmal an; der Hersteller sieht dann zwei Einträge.
 en start.adopt_failed The installation could not take the installer's registration over and registers again by itself; the maker then sees two entries.
+de start.routing Der Navigationsdienst wird gebaut; das dauert beim ersten Mal einige Minuten.
+en start.routing Building the navigation service; the first time takes a few minutes.
+de start.routing_failed Der Navigationsdienst ließ sich nicht bauen; alles andere läuft. "serviceops logs routing" sagt, warum, "serviceops routing on" versucht es noch einmal.
+en start.routing_failed The navigation service could not be built; everything else runs. "serviceops logs routing" says why, "serviceops routing on" tries again.
 de units.failed Der Aktualisieren-Knopf in ServiceOps erreicht diesen Server nicht; "serviceops install-units" versucht es noch einmal.
 en units.failed The update button in the tool will not reach this machine; "serviceops install-units" tries again.
 de harden.step Dieser Server wird abgesichert
@@ -1186,11 +1190,18 @@ fi
 for file in compose.yaml compose.traefik.yaml Caddyfile serviceops; do
     cp "$WORK/bundle/deploy/$file" "$INSTALL_DIR/$file"
 done
-# The recipe of the routing container (#183), built only when the operator
-# switches routing on.
+# Routing and VROOM are on from the start (#183, #421), so the navigation
+# data is built and the tours are planned from the browser; either can be
+# switched off with `serviceops routing off` or `serviceops vroom off`. The
+# routing container is built here from its recipe, and shares a directory
+# with the application, owned by the application's user.
+FIRST_PROFILES="$PROXY_PROFILE${PROXY_PROFILE:+,}vroom"
+PROFILES="$FIRST_PROFILES"
 if [ -d "$WORK/bundle/deploy/routing" ]; then
-    mkdir -p "$INSTALL_DIR/routing"
+    mkdir -p "$INSTALL_DIR/routing" "$INSTALL_DIR/data/files/routing"
     cp "$WORK/bundle/deploy/routing/Dockerfile" "$WORK/bundle/deploy/routing/routing.sh" "$INSTALL_DIR/routing/"
+    chown 33:33 "$INSTALL_DIR/data/files/routing"
+    PROFILES="$PROXY_PROFILE${PROXY_PROFILE:+,}routing,vroom"
 fi
 # The page Caddy shows while the app does not answer (ticket #248).
 mkdir -p "$INSTALL_DIR/maintenance"
@@ -1266,7 +1277,7 @@ SERVICEOPS_DOMAIN=$DOMAIN
 SERVICEOPS_ORIGIN=$ORIGIN
 SERVICEOPS_TLS=$TLS_DIRECTIVE
 SERVICEOPS_ACME_EMAIL=
-COMPOSE_PROFILES=$PROXY_PROFILE
+COMPOSE_PROFILES=$PROFILES
 
 APP_SECRET=$APP_SECRET
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
@@ -1289,6 +1300,10 @@ SERVICEOPS_LICENCE_KEY=$SERVER_KEY
 # Required: every document is set by it.
 SERVICEOPS_TYPESETTER_IMAGE=$TYPESETTER_IMAGE
 SERVICEOPS_TYPESETTER_URL=http://typesetter:8001
+
+# VROOM beside the application, which plans the maintenance tours over every
+# technician at once (#421). "serviceops vroom off" empties it.
+SERVICEOPS_VROOM_URL=http://vroom:3000
 
 # The public half of the backup key, which every backup is locked with. The
 # secret half is printed once by this script and kept in
@@ -1338,7 +1353,14 @@ openssl pkey -in "$WORK/installation.pem" -outform DER 2>/dev/null | tail -c 32 
     || note "$(t start.adopt_failed)"
 rm -f "$WORK/installation.pem"
 
-docker compose up -d --wait
+# Everything but the routing container, which is built below: building it
+# takes minutes, and one that does not build stops nothing else.
+COMPOSE_PROFILES="$FIRST_PROFILES" docker compose up -d --wait
+
+if [ "$PROFILES" != "$FIRST_PROFILES" ]; then
+    note "$(t start.routing)"
+    docker compose up -d --build routing >/dev/null 2>&1 || note "$(t start.routing_failed)"
+fi
 
 step "$(t licence.step)"
 
@@ -1362,7 +1384,7 @@ while :; do
                 sed "s|^SERVICEOPS_LICENCE_KEY=.*|SERVICEOPS_LICENCE_KEY=$SERVER_KEY|" .env > "$WORK/env"
                 cat "$WORK/env" > .env
                 rm -f "$WORK/env"
-                docker compose up -d --wait >/dev/null
+                COMPOSE_PROFILES="$FIRST_PROFILES" docker compose up -d --wait >/dev/null
                 continue
             fi ;;
         licence.revoked|licence.installation_ended|licence.key_taken|licence.clock_off|licence.unreachable|licence.server_error|licence.rate_limited)
